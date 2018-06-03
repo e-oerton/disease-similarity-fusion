@@ -1,0 +1,680 @@
+---
+title: "Disease Similarity Fusion"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+```{r,echo=FALSE,message=FALSE}
+# Load required libraries 
+library(plotly) #for graph output
+library(rmarkdown) #for html output
+library(gplots) #for heatmap
+library(RColorBrewer) #for heatmap
+library(igraph) #for generating cytoscape graph
+library(ROCR) #for auc
+```
+## 1. Set up the environment 
+### Set file path:
+```{r}
+
+# CURRENT WORKING DIRECTORY MUST BE SET AS THE PARENT disease-similarity-fusion FOLDER
+#setwd("~/Documents/disease-similarity-fusion")
+filePathToData = "Data"
+filePathToSimilarityMatrices = "Data/Similarity Matrices"
+filePathToScripts = "Scripts"
+
+```
+
+### Load disease dataset information:
+```{r,message=FALSE}
+
+load(paste(filePathToData,"diseaseDatasetInfo.Rda",sep = "/"))
+# Load drug-sharing data (evaluation matrices based on createDrugSimilarityMatrix.R)
+load(paste(filePathToData,"shareApprovedAndPhaseThreeDrugs.Rda",sep = "/"))
+load(paste(filePathToData,"shareApprovedDrugs.Rda",sep = "/"))
+
+# Load similarity fusion and evaluation functions:
+source(paste(filePathToScripts,"Perform Similarity Fusion.R",sep = "/"))
+source(paste(filePathToScripts,"Functions for Evaluation.R",sep = "/"))
+
+```
+
+## 2. Set up the individual and fused similarity matrices
+
+### Load input similarity matrices
+```{r}
+
+inputMatrices = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity")
+
+allFiles = list.files(path = filePathToSimilarityMatrices, pattern="*.Rda")
+for(file in allFiles){
+  if(sub(".Rda","",file)%in%inputMatrices){
+    load(paste(filePathToSimilarityMatrices,file,sep = "/"))
+  }
+}
+
+```
+
+### Optionally, create similarity matrices from scratch:
+```{r,eval=FALSE}
+
+# Code chunk not run
+
+source("Creating the Similarity Matrices/Scripts/createDiseaseOntologySimilarityMatrix.R")
+ontologicalSimilarity = createDiseaseOntologySimilarityMatrix()
+
+source("Creating the Similarity Matrices/Scripts/createPhenotypicSimilarityMatrix.R")
+phenotypicSimilarity = createPhenotypicSimilarityMatrix()
+
+source("Creating the Similarity Matrices/Scripts/createLiteratureCoOccurrenceSimilarityMatrix.R")
+litCoOccurrenceSimilarity = createCoOccurrenceSimilarityMatrix()
+
+source("Creating the Similarity Matrices/Scripts/createGeneticSimilarityMatrix.R")
+geneticSimilarity = createGeneticSimilarityMatrix() # may take ~1 min
+
+source("Creating the Similarity Matrices/Scripts/createTranscriptomicSimilarityMatrix.R")
+transcriptomicSimilarity = createTranscriptomicSimilarityMatrix()
+
+source("Creating the Similarity Matrices/Scripts/createDrugSharingSimilarityMatrix.R")
+drugSimilarity = createDrugSimilarityMatrix()
+```
+
+### Create fused matrices:
+```{r}
+
+fusedMatrixMinusDO = createFusedMatrix(filePathToSimilarityMatrices,inputMatrices = c("phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity"),weights = c(1,1,1,1,1))
+fusedMatrixMinusDrug = createFusedMatrix(filePathToSimilarityMatrices,inputMatrices = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity"),weights = c(1,1,1,1,1))
+fusedMatrix = createFusedMatrix(filePathToSimilarityMatrices,inputMatrices = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity"))
+
+```
+
+### Load pre-computed random matrices (for significance testing)
+```{r}
+
+load(paste(filePathToData,"fusedRandomMatricesDistWeighted.Rda",sep = "/"))
+load(paste(filePathToData,"fusedRandomMatricesWeightedDistWeighted.Rda",sep = "/"))
+```
+
+
+```{r, echo=FALSE,eval=FALSE}
+### Optionally, create random fused matrices
+# Create 'null' fused matrices created from fusion of 'null' similarity matrices based on randomly sampling features from the feature universe for each disease in each space.
+# It is recommended to first create the preceding feature vector objects in the 'createXSimilarityMatrix.R' scripts and have these in the working environment, then the code to create these can be commented out meaning that the randomization code is all that is run. After doing this 1000 random matrices will take ~2h to run, if the scripts are used as-is this will take significantly longer.
+
+fusedRandomMatrices = vector("list",1000)
+for(i in 1:length(fusedRandomMatrices)){
+  if(i%%10==0) print(i)
+  fusedRandomMatrices[[i]] = createFusedMatrix(inputMatrices = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity"), randomFeatureVectors = TRUE)
+}
+
+# fusedRandomMatricesWeighted = vector("list",1000)
+# for(i in 1:length(fusedRandomMatricesWeighted)){
+#   if(i%%10==0) print(i)
+#   fusedRandomMatricesWeighted[[i]] = createFusedMatrix(inputMatrices = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity"), randomFeatureVectors = TRUE, weights = c(1,1,1,2,2,2))
+# }
+```
+
+
+## 3. Create the disease map
+
+### Define significance threshold
+```{r,fig.width=16,fig.height=12}
+
+getProportionCutOffs = function(similarityMatrix,randomMatrices,verbose = FALSE){
+  # The significance threshold is defined as the 99.99% highest random similarity value
+  thresh = sort(sapply(randomMatrices,function(x) x[lower.tri(x)]))[1000*0.9999*length(similarityMatrix[lower.tri(similarityMatrix)])]
+  proportionOfValuesWhichAreSignificant = length(similarityMatrix[lower.tri(similarityMatrix)][which(similarityMatrix[lower.tri(similarityMatrix)]>thresh)])/length(similarityMatrix[lower.tri(similarityMatrix)])
+  if(verbose){cat(paste0("Proportion of values which are above the significance threshold: ",proportionOfValuesWhichAreSignificant))}
+  return(proportionOfValuesWhichAreSignificant)
+}
+
+proportionOfValuesWhichAreSignificantInFullMatrix = getProportionCutOffs(fusedMatrix,fusedRandomMatrices,verbose = TRUE) 
+fusedMatrixSig = applySignificanceThreshold(fusedMatrix,1-proportionOfValuesWhichAreSignificantInFullMatrix)
+
+plot(hclust(as.dist(1-fusedMatrixSig)))
+```
+
+
+### Write the disease map to a graph representation which can be imported to Cytoscape or other graph analysis software
+```{r,echo = FALSE,eval=FALSE}
+# Create graph representation from significant similarity matrix using igraph function
+binarygraph  = graph_from_adjacency_matrix(fusedMatrixSig,mode = "undirected",weighted = TRUE,diag = FALSE)
+
+# Define nodes
+write.csv(cbind(paste0("\"",V(binarygraph)$name,"\""),sapply(V(binarygraph)$name,function(x) diseaseDatasetInfo[which(diseaseDatasetInfo$condition==x),"disont.label"])),file="nodelist.csv",quote = FALSE)
+
+# Define edges (including edge weight and whether the edge connects two diseases in different DO classes, i.e. a novel link)
+write.csv(cbind(get.edgelist(binarygraph),E(binarygraph)$weight,apply(get.edgelist(binarygraph),1,function(x) sameDOClass[x[1],x[2]]==0)),file = "edgelist.csv",quote = FALSE)
+
+```
+
+
+## 4. Further evaluation
+
+### Examine data sparsity:
+```{r,echo = FALSE}
+
+t <- list(family = "helvetica neue")
+
+x = c("Ontological","Phenotype","Co-occurrence","Genetic","Expression","Drug","Fused (6 spaces)")
+# For each space, find the number of observations above the minimum value (equivalent to 0 following quantile normalization)
+y = c(length(which(ontologicalSimilarity[lower.tri(ontologicalSimilarity)]>min(ontologicalSimilarity[lower.tri(ontologicalSimilarity)],na.rm = TRUE)))/length(ontologicalSimilarity[lower.tri(ontologicalSimilarity)]),
+length(which(phenotypicSimilarity[lower.tri(phenotypicSimilarity)]>min(phenotypicSimilarity[lower.tri(phenotypicSimilarity)],na.rm = TRUE)))/length(phenotypicSimilarity[lower.tri(phenotypicSimilarity)]),
+length(which(litCoOccurrenceSimilarity[lower.tri(litCoOccurrenceSimilarity)]>min(litCoOccurrenceSimilarity[lower.tri(litCoOccurrenceSimilarity)],na.rm = TRUE)))/length(litCoOccurrenceSimilarity[lower.tri(litCoOccurrenceSimilarity)]),
+length(which(geneticSimilarity[lower.tri(geneticSimilarity)]>min(geneticSimilarity[lower.tri(geneticSimilarity)],na.rm = TRUE)))/length(geneticSimilarity[lower.tri(geneticSimilarity)]),
+length(which(transcriptomicSimilarity[lower.tri(transcriptomicSimilarity)]>min(transcriptomicSimilarity[lower.tri(transcriptomicSimilarity)],na.rm = TRUE)))/length(transcriptomicSimilarity[lower.tri(transcriptomicSimilarity)]),
+length(which(drugSimilarity[lower.tri(drugSimilarity)]>min(drugSimilarity[lower.tri(drugSimilarity)],na.rm = TRUE)))/length(drugSimilarity[lower.tri(drugSimilarity)]),
+length(which(fusedMatrix[lower.tri(fusedMatrix)]>min(fusedMatrix[lower.tri(fusedMatrix)],na.rm = TRUE)))/length(fusedMatrix[lower.tri(fusedMatrix)]))
+
+data = data.frame(x,y)
+data$x <- factor(data$x, levels = data[["x"]])
+
+plot_ly(data, x = ~x, y = ~y, type = 'bar', name = '', marker = list(color = 'rgb(0,191,255)')) %>%
+  layout(xaxis = list(title = "", tickangle = 0),
+         font = t,
+         yaxis = list(title = "Percentage of non-zero values"),
+         margin = list(b = 100),
+         barmode = 'group')
+
+```
+
+
+### Examine distribution of similarities in each space
+#### Before quantile normalization:
+```{r,echo=FALSE}
+
+plot(density(ontologicalSimilarity[lower.tri(ontologicalSimilarity)]),col = "gold",lty = 2,lwd = 2,xlim = c(0,1.1),ylim = c(0,115))
+lines(density(phenotypicSimilarity[lower.tri(phenotypicSimilarity)]),col = "darkorange",lty = 2,lwd = 2)
+lines(density(litCoOccurrenceSimilarity[lower.tri(litCoOccurrenceSimilarity)]),col = "green",lty = 2,lwd = 2)
+lines(density(geneticSimilarity[lower.tri(geneticSimilarity)]),col = "lightpink",lty = 2,lwd = 2)
+lines(density(transcriptomicSimilarity[lower.tri(transcriptomicSimilarity)]),col = "deepskyblue",lty = 2,lwd = 2)
+lines(density(drugSimilarity[lower.tri(drugSimilarity)]),col = "purple",lty = 2,lwd = 2)
+legend("topright",c("Ontology","Phenotype","Co-occurrence","Genetic","Expression","Drug","Random"),fill = c("gold","orange","green","lightpink","deepskyblue","purple","grey"), cex = 0.7)
+
+```
+
+#### After quantile normalization:
+```{r,echo=FALSE}
+# Retrieve the quantile-normalized values for each individual space:
+allSpaces = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity")
+temp = lapply(allSpaces,function(x) get(x))
+names(temp) = allSpaces
+normalizedMatrixList = normalizeMatrices(temp)
+
+plot(density(normalizedMatrixList[[1]][lower.tri(normalizedMatrixList[[1]])]),col = "gold",lty = 2,lwd = 2,xlim = c(0,0.65),ylim = c(0,120))
+lines(density(normalizedMatrixList[[2]][lower.tri(normalizedMatrixList[[2]])]),col = "darkorange",lty = 2,lwd = 2)
+lines(density(normalizedMatrixList[[3]][lower.tri(normalizedMatrixList[[3]])]),col = "green",lty = 2,lwd = 2)
+lines(density(normalizedMatrixList[[4]][lower.tri(normalizedMatrixList[[4]])]),col = "lightpink",lty = 2,lwd = 2)
+lines(density(normalizedMatrixList[[5]][lower.tri(normalizedMatrixList[[5]])]),col = "deepskyblue",lty = 2,lwd = 2)
+lines(density(normalizedMatrixList[[6]][lower.tri(normalizedMatrixList[[6]])]),col = "purple",lty = 2,lwd = 2)
+legend("topright",c("Ontology","Phenotype","Co-occurrence","Genetic","Expression","Drug"),fill = c("gold","orange","green","lightpink","deepskyblue","purple"), cex = 0.7)
+
+```
+
+Note that as there are ties in the data, the quantile normalization doesn't make the distributions exactly equal, but it brings them much closer.
+
+### What is the similarity between spaces?
+
+Use the Pearson correlation between spaces to determine how similar the relationships between diseases are in different feature spaces.
+
+```{r, echo=FALSE}
+
+# Gather the matrices into a list: 
+allIndividualMatrices = normalizedMatrixList 
+allIndividualMatrices[[length(allIndividualMatrices)+1]] = fusedMatrix
+
+# Initialize correlation matrix:
+betweenMatrixCorrelations = matrix(ncol = length(allIndividualMatrices),nrow = length(allIndividualMatrices))
+colnames(betweenMatrixCorrelations) = c("Ont","Phen","Lit","Gene","Expr","Drug","Fused")
+rownames(betweenMatrixCorrelations) = colnames(betweenMatrixCorrelations)
+
+# Calculate Pearson correlation between each pair of matrices
+for(i in 1:length(allIndividualMatrices)){
+  for(j in 1:length(allIndividualMatrices)){
+    if(i!=j){
+      temp1 = allIndividualMatrices[[i]][lower.tri(allIndividualMatrices[[i]])]
+      temp2 = allIndividualMatrices[[j]][lower.tri(allIndividualMatrices[[j]])]
+      betweenMatrixCorrelations[i,j] = cor(temp1,temp2,method = "pearson")
+    }
+  }
+}
+
+# Plot:
+my_palette <- colorRampPalette(c("white", "green"))(n = 299)
+heatmap.2( betweenMatrixCorrelations, cellnote=round(betweenMatrixCorrelations,2), notecex = 0.7,notecol="black", trace='none', key=FALSE,lwid = c(.05,.99),lhei = c(.05,.99),margins = c(6,6),cexRow = 1.1,cexCol = 1.1,col = my_palette,symm = TRUE)
+
+```
+
+#### What if the spaces are weighted differently?
+
+Create a weighted fused matrix where the three highly similar spaces (ontology, phenotype, and literature co-occurrence) account for 33% of the fused matrix, instead of half.
+```{r}
+
+fusedMatrixWeighted = createFusedMatrix(filePathToSimilarityMatrices,inputMatrices = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity"),weights = c(1,1,1,2,2,2)) 
+
+```
+
+```{r,echo=FALSE}
+
+allIndividualMatrices[[length(allIndividualMatrices)]] = fusedMatrixWeighted
+
+for(i in 1:length(allIndividualMatrices)){
+  for(j in 1:length(allIndividualMatrices)){
+    if(i!=j){
+      temp1 = allIndividualMatrices[[i]][lower.tri(allIndividualMatrices[[i]])]
+      temp2 = allIndividualMatrices[[j]][lower.tri(allIndividualMatrices[[j]])]
+      betweenMatrixCorrelations[i,j] = cor(temp1,temp2,method = "pearson")
+    }
+  }
+}
+
+my_palette <- colorRampPalette(c("white", "green"))(n = 299)
+
+heatmap.2( betweenMatrixCorrelations, cellnote=round(betweenMatrixCorrelations,2), notecex = 0.7,notecol="black", trace='none', key=FALSE,lwid = c(.05,.99),lhei = c(.05,.99),margins = c(6,6),cexRow = 1.1,cexCol = 1.1,col = my_palette,symm = TRUE)
+
+```
+
+
+### How many novel links in the disease map?
+```{r,echo=FALSE}
+
+cat(paste("Proportion of links in the significant disease map which are in different top-level classes: ",length(which(getNovelLinks(fusedMatrixSig[lower.tri(fusedMatrixSig)])!=0))/length(which(fusedMatrixSig[lower.tri(fusedMatrixSig)]!=0))))
+
+# Repeat for the weighted matrix:
+proportionOfValuesWhichAreSignificantInFullMatrixWeighted = getProportionCutOffs(fusedMatrixWeighted,fusedRandomMatricesWeighted)
+fusedMatrixWeightedSig = applySignificanceThreshold(fusedMatrixWeighted,1-proportionOfValuesWhichAreSignificantInFullMatrixWeighted)
+cat(paste("Proportion of links in the significant weighted disease map which are in different top-level classes: ",length(which(getNovelLinks(fusedMatrixWeightedSig[lower.tri(fusedMatrixWeightedSig)])!=0))/length(which(fusedMatrixWeightedSig[lower.tri(fusedMatrixWeightedSig)]!=0))))
+```
+
+
+### What proportion of relationships share drugs?
+
+Approved drugs and drugs in Phase III Clinical Trials:
+```{r,echo=FALSE}
+hideResult = getLinksThatAreNovelAndOrShareDrugs(proportionCutOff = 1-proportionOfValuesWhichAreSignificantInFullMatrix)
+```
+
+Approved drugs only:
+```{r,echo=FALSE}
+hideResult = getLinksThatAreNovelAndOrShareDrugs(proportionCutOff = 1-proportionOfValuesWhichAreSignificantInFullMatrix, drugSimilarityInfo = shareApprovedDrugs)
+```
+
+### Examine novel and drug-sharing links at different similarity thresholds
+
+```{r, echo=FALSE}
+# Loop through the function for progressively stricter similarity cut-offs
+
+proportionKnownRelationships = vector("list",length(c(seq(0, 0.98, 0.01),0.99)))
+names(proportionKnownRelationships) = c(seq(0, 0.98, 0.01),0.99)
+jaccardScoresApprovedDrugs = vector("list",length(c(seq(0, 0.98, 0.01),0.99)))
+names(jaccardScoresApprovedDrugs) = c(seq(0, 0.98, 0.01),0.99)
+jaccardScoresApprovedAndPhaseThreeDrugs = vector("list",length(c(seq(0, 0.98, 0.01),0.99)))
+names(jaccardScoresApprovedAndPhaseThreeDrugs) = c(seq(0, 0.98, 0.01),0.99)
+jaccardScoresNovelApprovedDrugs = vector("list",length(c(seq(0, 0.98, 0.01),0.99)))
+names(jaccardScoresNovelApprovedDrugs) = c(seq(0, 0.98, 0.01),0.99)
+jaccardScoresNovelApprovedAndPhaseThreeDrugs = vector("list",length(c(seq(0, 0.98, 0.01),0.99)))
+names(jaccardScoresNovelApprovedAndPhaseThreeDrugs) = c(seq(0, 0.98, 0.01),0.99)
+numberOfLinks = vector("list",length(c(seq(0, 0.98, 0.01),0.99)))
+names(numberOfLinks) = c(seq(0, 0.98, 0.01),0.99)
+
+k = 0
+for(proportionCutOff in c(seq(0, 0.98, 0.01),0.99)){
+  
+  k = k + 1
+  #print(k)
+  
+  resultsTemp = getLinksThatAreNovelAndOrShareDrugs(proportionCutOff,drugSimilarityInfo = shareApprovedDrugs,verbose = FALSE)
+  jaccardScoresApprovedDrugs[[k]] = resultsTemp[[1]]
+  jaccardScoresNovelApprovedDrugs[[k]] = resultsTemp[[2]]
+  proportionKnownRelationships[[k]] = 1-resultsTemp[[3]]
+  numberOfLinks[[k]] = resultsTemp[[4]]
+  
+  resultsTemp = getLinksThatAreNovelAndOrShareDrugs(proportionCutOff,drugSimilarityInfo = shareApprovedAndPhaseThreeDrugs,verbose = FALSE)
+  jaccardScoresApprovedAndPhaseThreeDrugs[[k]] = resultsTemp[[1]]
+  jaccardScoresNovelApprovedAndPhaseThreeDrugs[[k]] = resultsTemp[[2]]
+  
+}
+
+```
+
+#### What's the relationship between the similarity cut-off and the proportion of known links (in the same DO class)?
+```{r,echo=FALSE,fig.width=10}
+x = sapply(1:length(numberOfLinks),function(i) paste(c(seq(0, 0.98, 0.01),0.99)[i],"/",numberOfLinks[i],"links"))
+y1Rand = sapply(proportionKnownRelationships, function(x) x[[1]])
+y1DO = sapply(proportionKnownRelationships, function(x) x[[2]])
+y1Pheno = sapply(proportionKnownRelationships, function(x) x[[3]])
+y1Lit = sapply(proportionKnownRelationships, function(x) x[[4]])
+y1Disgene = sapply(proportionKnownRelationships, function(x) x[[5]])
+y1Trans = sapply(proportionKnownRelationships, function(x) x[[6]])
+y1Drug = sapply(proportionKnownRelationships, function(x) x[[7]])
+y1NonDO = sapply(proportionKnownRelationships, function(x) x[[9]])
+data = data.frame(x,y1Rand,y1DO,y1Pheno,y1Lit,y1Disgene,y1Trans,y1Drug,y1NonDO)
+#The default order will be alphabetized unless specified as below:
+data$x <- factor(data$x, levels = data[["x"]])
+
+ticks <- list(
+  title = "",
+  autotick = FALSE,
+  tick0 = 0,
+  dtick = 5
+)
+
+plot_ly(data,x = ~x, y = ~y1NonDO, type = 'scatter', mode = 'lines+markers', name = 'Fused (NonDO): All links',line = list(color = "rgb(31, 119, 180)",dash = 'line'),marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Rand, type = 'scatter', mode = 'lines+markers', name = 'Random: All links',line = list(color = "lightgrey",dash = 'line'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1DO, type = 'scatter', mode = 'lines+markers', name = 'DO: All links',line = list(color = "yellow",dash = 'line'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Pheno, type = 'scatter', mode = 'lines+markers', name = 'Pheno: All links',line = list(color = "orange",dash = 'line'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Lit, type = 'scatter', mode = 'lines+markers', name = 'Lit: All links',line = list(color = "lightgreen",dash = 'line'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Disgene, type = 'scatter', mode = 'lines+markers', name = 'Disgene: All links',line = list(color = "lightpink",dash = 'line'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Trans, type = 'scatter', mode = 'lines+markers', name = 'Expression: All links',line = list(color = "lightblue",dash = 'line'), marker = list(opacity = 0)) %>%
+  add_trace(x = ~x, y = ~y1Drug, type = 'scatter', mode = 'lines+markers', name = 'Drug: All links',line = list(color = "purple",dash = 'line'), marker = list(opacity = 0)) %>%
+  layout(xaxis = ticks,
+         yaxis = list(title = "Proportion of links in the same DO class"),
+         font = t,
+         margin = list(b = 100),
+         barmode = 'group')
+
+```
+
+
+#### What's the relationship between the similarity cut-off and the mean Jaccard overlap of drugs shared by the linked diseases (including approved drugs and drugs in Phase III clinical trials)
+```{r, echo=FALSE, fig.width=10}
+
+x = c(seq(0, 0.98, 0.01),0.99)
+y1Rand = sapply(jaccardScoresApprovedAndPhaseThreeDrugs, function(x) x[[1]])
+y1DO = sapply(jaccardScoresApprovedAndPhaseThreeDrugs, function(x) x[[2]])
+y1Pheno = sapply(jaccardScoresApprovedAndPhaseThreeDrugs, function(x) x[[3]])
+y1Lit = sapply(jaccardScoresApprovedAndPhaseThreeDrugs, function(x) x[[4]])
+y1Disgene = sapply(jaccardScoresApprovedAndPhaseThreeDrugs, function(x) x[[5]])
+y1Trans = sapply(jaccardScoresApprovedAndPhaseThreeDrugs, function(x) x[[6]])
+y1Drug = sapply(jaccardScoresApprovedAndPhaseThreeDrugs, function(x) x[[7]])
+y1NonDrug = sapply(jaccardScoresApprovedAndPhaseThreeDrugs, function(x) x[[8]])
+data = data.frame(x,y1Rand,y1DO,y1Pheno,y1Lit,y1Disgene,y1Trans,y1Drug,y1NonDrug)
+#The default order will be alphabetized unless specified as below:
+data$x <- factor(data$x, levels = data[["x"]])
+
+ticks <- list(
+  title = "Similarity threshold used to define linked diseases",
+  autotick = FALSE,
+  tick0 = 0,
+  dtick = 10 
+)
+
+
+plot_ly(data,x = ~x, y = ~y1NonDrug, type = 'scatter', mode = 'lines+markers', name = 'Fused (minus drug space)',line = list(color = "rgb(31, 119, 180)",dash = 'line'),marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1DO, type = 'scatter', mode = 'lines+markers', name = 'Ontological',line = list(color = "yellow",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Pheno, type = 'scatter', mode = 'lines+markers', name = 'Phenotype',line = list(color = "orange",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Lit, type = 'scatter', mode = 'lines+markers', name = 'Literature co-occurrence',line = list(color = "lightgreen",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Disgene, type = 'scatter', mode = 'lines+markers', name = 'Genetic',line = list(color = "lightpink",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Trans, type = 'scatter', mode = 'lines+markers', name = 'Gene expression',line = list(color = "lightblue",dash = 'dot'), marker = list(opacity = 0)) %>%
+  add_trace(x = ~x, y = ~y1Rand, type = 'scatter', mode = 'lines+markers', name = 'Random map',line = list(color = "lightgrey",dash = 'dot'), marker = list(opacity = 0)) %>%
+  layout(xaxis = ticks, 
+         yaxis = list(title = "Mean Jaccard drug overlap of linked diseases"),
+         legend = list(x = 0.1, y = 0.9),
+         font = t,
+         margin = list(b = 100),
+         barmode = 'group')
+
+```
+
+
+#### What's the relationship between the similarity cut-off and the mean Jaccard overlap of drugs shared by the linked diseases (including approved drugs and drugs in Phase III clinical trials): Novel links only
+```{r, echo=FALSE, fig.width=10}
+
+x = c(seq(0, 0.98, 0.01),0.99)
+
+y1Rand = sapply(jaccardScoresNovelApprovedAndPhaseThreeDrugs, function(x) x[[1]])
+y1DO = sapply(jaccardScoresNovelApprovedAndPhaseThreeDrugs, function(x) x[[2]])
+y1Pheno = sapply(jaccardScoresNovelApprovedAndPhaseThreeDrugs, function(x) x[[3]])
+y1Lit = sapply(jaccardScoresNovelApprovedAndPhaseThreeDrugs, function(x) x[[4]])
+y1Disgene = sapply(jaccardScoresNovelApprovedAndPhaseThreeDrugs, function(x) x[[5]])
+y1Trans = sapply(jaccardScoresNovelApprovedAndPhaseThreeDrugs, function(x) x[[6]])
+y1Drug = sapply(jaccardScoresNovelApprovedAndPhaseThreeDrugs, function(x) x[[7]])
+y1NonDrug = sapply(jaccardScoresNovelApprovedAndPhaseThreeDrugs, function(x) x[[8]])
+data = data.frame(x,y1Rand,y1DO,y1Pheno,y1Lit,y1Disgene,y1Trans,y1Drug,y1NonDrug)
+#The default order will be alphabetized unless specified as below:
+data$x <- factor(data$x, levels = data[["x"]])
+
+
+ticks <- list(
+  title = "Similarity threshold used to define linked diseases",
+  autotick = FALSE,
+  tick0 = 0,
+  dtick = 10
+)
+
+
+plot_ly(data,x = ~x, y = ~y1NonDrug, type = 'scatter', mode = 'lines+markers', name = 'Fused (minus drug space), novel links only',line = list(color = "rgb(31, 119, 180)",dash = 'line'),marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1DO, type = 'scatter', mode = 'lines+markers', name = 'Ontological, novel links only',line = list(color = "yellow",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Pheno, type = 'scatter', mode = 'lines+markers', name = 'Phenotype, novel links only',line = list(color = "orange",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Lit, type = 'scatter', mode = 'lines+markers', name = 'Literature co-occurrence, novel links only',line = list(color = "lightgreen",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Disgene, type = 'scatter', mode = 'lines+markers', name = 'Genetic, novel links only',line = list(color = "lightpink",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Trans, type = 'scatter', mode = 'lines+markers', name = 'Gene expression, novel links only',line = list(color = "lightblue",dash = 'dot'), marker = list(opacity = 0)) %>%
+  add_trace(x = ~x, y = ~y1Rand, type = 'scatter', mode = 'lines+markers', name = 'Random map, novel links only',line = list(color = "lightgrey",dash = 'dot'), marker = list(opacity = 0)) %>%
+  layout(xaxis = ticks, 
+         yaxis = list(title = "Mean Jaccard drug overlap of linked diseases"),
+         legend = list(x = 0.1, y = 0.9),
+         font = t,
+         margin = list(b = 100),
+         barmode = 'group')
+
+```
+
+#### What's the relationship between the similarity cut-off and the mean Jaccard overlap of drugs shared by the linked diseases (approved drugs only)
+
+```{r, echo=FALSE, fig.width=10}
+
+x = c(seq(0, 0.98, 0.01),0.99)
+y1Rand = sapply(jaccardScoresApprovedDrugs, function(x) x[[1]])
+y1DO = sapply(jaccardScoresApprovedDrugs, function(x) x[[2]])
+y1Pheno = sapply(jaccardScoresApprovedDrugs, function(x) x[[3]])
+y1Lit = sapply(jaccardScoresApprovedDrugs, function(x) x[[4]])
+y1Disgene = sapply(jaccardScoresApprovedDrugs, function(x) x[[5]])
+y1Trans = sapply(jaccardScoresApprovedDrugs, function(x) x[[6]])
+y1Drug = sapply(jaccardScoresApprovedDrugs, function(x) x[[7]])
+y1NonDrug = sapply(jaccardScoresApprovedDrugs, function(x) x[[8]])
+data = data.frame(x,y1Rand,y1DO,y1Pheno,y1Lit,y1Disgene,y1Trans,y1Drug,y1NonDrug)
+#The default order will be alphabetized unless specified as below:
+data$x <- factor(data$x, levels = data[["x"]])
+
+ticks <- list(
+  title = "Similarity threshold used to define linked diseases",
+  autotick = FALSE,
+  tick0 = 0,
+  dtick = 10 #This just tells it to only label every other tick
+)
+
+
+plot_ly(data,x = ~x, y = ~y1NonDrug, type = 'scatter', mode = 'lines+markers', name = 'Fused (minus drug space)',line = list(color = "rgb(31, 119, 180)",dash = 'line'),marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1DO, type = 'scatter', mode = 'lines+markers', name = 'Ontological',line = list(color = "yellow",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Pheno, type = 'scatter', mode = 'lines+markers', name = 'Phenotype',line = list(color = "orange",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Lit, type = 'scatter', mode = 'lines+markers', name = 'Literature co-occurrence',line = list(color = "lightgreen",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Disgene, type = 'scatter', mode = 'lines+markers', name = 'Genetic',line = list(color = "lightpink",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Trans, type = 'scatter', mode = 'lines+markers', name = 'Gene expression',line = list(color = "lightblue",dash = 'dot'), marker = list(opacity = 0)) %>%
+  add_trace(x = ~x, y = ~y1Rand, type = 'scatter', mode = 'lines+markers', name = 'Random map',line = list(color = "lightgrey",dash = 'dot'), marker = list(opacity = 0)) %>%
+  layout(xaxis = ticks, 
+         yaxis = list(title = "Mean Jaccard drug overlap of linked diseases"),
+         legend = list(x = 0.1, y = 0.9),
+         font = t,
+         margin = list(b = 100),
+         barmode = 'group')
+
+```
+
+#### What's the relationship between the similarity cut-off and the mean Jaccard overlap of drugs shared by the linked diseases (approved drugs only): Novel links only
+
+```{r, echo=FALSE, fig.width=10}
+
+x = c(seq(0, 0.98, 0.01),0.99)
+
+y1Rand = sapply(jaccardScoresNovelApprovedDrugs, function(x) x[[1]])
+y1DO = sapply(jaccardScoresNovelApprovedDrugs, function(x) x[[2]])
+y1Pheno = sapply(jaccardScoresNovelApprovedDrugs, function(x) x[[3]])
+y1Lit = sapply(jaccardScoresNovelApprovedDrugs, function(x) x[[4]])
+y1Disgene = sapply(jaccardScoresNovelApprovedDrugs, function(x) x[[5]])
+y1Trans = sapply(jaccardScoresNovelApprovedDrugs, function(x) x[[6]])
+y1Drug = sapply(jaccardScoresNovelApprovedDrugs, function(x) x[[7]])
+y1NonDrug = sapply(jaccardScoresNovelApprovedDrugs, function(x) x[[8]])
+data = data.frame(x,y1Rand,y1DO,y1Pheno,y1Lit,y1Disgene,y1Trans,y1Drug,y1NonDrug)
+#The default order will be alphabetized unless specified as below:
+data$x <- factor(data$x, levels = data[["x"]])
+
+
+plot_ly(data,x = ~x, y = ~y1NonDrug, type = 'scatter', mode = 'lines+markers', name = 'Fused (minus drug space), novel links only, approved drugs only',line = list(color = "rgb(31, 119, 180)",dash = 'line'),marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1DO, type = 'scatter', mode = 'lines+markers', name = 'Ontological, novel links only, approved drugs only',line = list(color = "yellow",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Pheno, type = 'scatter', mode = 'lines+markers', name = 'Phenotype, novel links only, approved drugs only',line = list(color = "orange",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Lit, type = 'scatter', mode = 'lines+markers', name = 'Literature co-occurrence, novel links only, approved drugs only',line = list(color = "lightgreen",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Disgene, type = 'scatter', mode = 'lines+markers', name = 'Genetic, novel links only, approved drugs only',line = list(color = "lightpink",dash = 'dot'), marker = list(opacity = 0)) %>%
+   add_trace(x = ~x, y = ~y1Trans, type = 'scatter', mode = 'lines+markers', name = 'Gene expression, novel links only, approved drugs only',line = list(color = "lightblue",dash = 'dot'), marker = list(opacity = 0)) %>%
+     add_trace(x = ~x, y = ~y1Rand, type = 'scatter', mode = 'lines+markers', name = 'Random map, novel links only, approved drugs only',line = list(color = "lightgrey",dash = 'dot'), marker = list(opacity = 0)) %>%
+  layout(xaxis = ticks,
+         yaxis = list(title = "Jaccard overlap of all links which share drugs"),
+         legend = list(x = 0.1, y = 0.9),
+         font = t,
+         margin = list(b = 100),
+         barmode = 'group')
+
+```
+
+
+
+### Predictive ability
+
+#### Build a random forest classifier on the full similarity values to predict top-level DO classes
+
+```{r, echo = FALSE, eval=FALSE}
+# This takes ~30 min to run, so recommended just to load the pre-computed results below
+combinations = list(ontologicalSimilarity,phenotypicSimilarity,litCoOccurrenceSimilarity,geneticSimilarity,transcriptomicSimilarity,drugSimilarity,fusedMatrixMinusDO)
+anatomicalAUCRFDim = vector("list",length(combinations))
+names(anatomicalAUCRFDim) = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity","fusedMatrixMinusDO")
+cellproAUCRFDim = vector("list",length(combinations))
+names(cellproAUCRFDim) = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity","fusedMatrixMinusDO")
+anatomicalFPRRFDim = vector("list",length(combinations))
+names(anatomicalFPRRFDim) = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity","fusedMatrixMinusDO")
+cellproFPRRFDim = vector("list",length(combinations))
+names(cellproFPRRFDim) = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity","fusedMatrixMinusDO")
+anatomicalTPRRFDim = vector("list",length(combinations))
+names(anatomicalTPRRFDim) = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity","fusedMatrixMinusDO")
+cellproTPRRFDim = vector("list",length(combinations))
+names(cellproTPRRFDim) = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity","fusedMatrixMinusDO")
+
+k = 0
+for(matrix in combinations){
+  k = k + 1  
+  print(k)
+  results <- RFDim("disease of anatomical entity",matrix,returnROC = TRUE)
+  anatomicalAUCRFDim[[k]] <- results[[1]]
+  anatomicalFPRRFDim[[k]] <- list(results[[2]])
+  anatomicalTPRRFDim[[k]] <- list(results[[3]])
+  
+  results <- RFDim("disease of cellular proliferation",matrix,returnROC = TRUE)
+  cellproAUCRFDim[[k]] <- results[[1]]
+  cellproFPRRFDim[[k]] <- list(results[[2]])
+  cellproTPRRFDim[[k]] <- list(results[[3]])
+
+}
+
+```
+
+```{r, echo = FALSE}
+
+load(paste(filePathToData,"Random Forest results","cellproAUCRFDim.Rda",sep = "/"))
+load(paste(filePathToData,"Random Forest results","cellproFPRRFDim.Rda",sep = "/"))
+load(paste(filePathToData,"Random Forest results","cellproTPRRFDim.Rda",sep = "/"))
+load(paste(filePathToData,"Random Forest results","anatomicalAUCRFDim.Rda",sep = "/"))
+load(paste(filePathToData,"Random Forest results","anatomicalFPRRFDim.Rda",sep = "/"))
+load(paste(filePathToData,"Random Forest results","anatomicalTPRRFDim.Rda",sep = "/"))
+
+```
+
+
+```{r, echo=FALSE}
+
+cat(paste("AUC, average of individual spaces (minus ontological space):",round(mean(c(mean(sapply(anatomicalAUCRFDim[2:6],mean)),mean(sapply(cellproAUCRFDim[2:6],mean)))),13)))
+cat(paste("AUC, fused matrix (minus ontological space):",round(mean(c(mean(anatomicalAUCRFDim[["fusedMatrixMinusDO"]]),mean(cellproAUCRFDim[["fusedMatrixMinusDO"]]))),13)))
+
+cat(paste("AUC Disease of Anatomical Entity, average of individual spaces (minus ontological space):", mean(sapply(anatomicalAUCRFDim[2:6],mean))))
+cat(paste("AUC Disease of Anatomical Entity, fused matrix (minus ontological space):", mean(anatomicalAUCRFDim[["fusedMatrixMinusDO"]])))
+cat(paste("AUC Cellular Proliferation, average of individual spaces (minus ontological space):", mean(sapply(cellproAUCRFDim[2:6],mean))))
+cat(paste("AUC Cellular Proliferation, fused matrix (minus ontological space):", mean(cellproAUCRFDim[["fusedMatrixMinusDO"]])))
+
+```
+
+#### Show ROC plots
+
+```{r,echo=FALSE}
+
+a <- list(title = 'False positive rate',tickfont = list(family = 'sans-serif'),gridwidth = 0,gridcolor = "white")
+b <- list(title= 'True positive rate',tickfont = list(family = 'sans-serif'),gridwidth = 0,gridcolor = "white")
+
+plot_ly(x = unlist(anatomicalFPRRFDim[[7]]), y = unlist(anatomicalTPRRFDim[[7]]), type = 'scatter', mode = 'lines', line = list(color = "rgb(31, 119, 180)",width = 3),name = "Fused (minus ontological space)",showlegend = F) %>%
+  add_trace(x = unlist(anatomicalFPRRFDim[[2]]), y = unlist(anatomicalTPRRFDim[[2]]), type = 'scatter', mode = 'lines+markers', line = list(color = "orange",dash = 'dot',width = 2), name = 'Phenotype', marker = list(opacity = 0)) %>%
+  add_trace(x = unlist(anatomicalFPRRFDim[[3]]), y = unlist(anatomicalTPRRFDim[[3]]), type = 'scatter', mode = 'lines+markers', line = list(color = "lightgreen",dash = 'dot',width = 2), name = 'Co-occurrence', marker = list(opacity = 0)) %>%
+  add_trace(x = unlist(anatomicalFPRRFDim[[4]]), y = unlist(anatomicalTPRRFDim[[4]]), type = 'scatter', mode = 'lines+markers', line = list(color = "lightpink",dash = 'dot',width = 2), name = 'Genetic', marker = list(opacity = 0)) %>%
+  add_trace(x = unlist(anatomicalFPRRFDim[[5]]), y = unlist(anatomicalTPRRFDim[[5]]), type = 'scatter', mode = 'lines+markers', line = list(color = "lightblue",dash = 'dot',width = 2), name = 'Expression', marker = list(opacity = 0)) %>%
+  add_trace(x = unlist(anatomicalFPRRFDim[[6]]), y = unlist(anatomicalTPRRFDim[[6]]), type = 'scatter', mode = 'lines+markers', line = list(color = "purple",dash = 'dot',width = 2), name = 'Drug', marker = list(opacity = 0)) %>%
+  add_trace(x = seq(from = 0, to = 1,length.out = 100), y = seq(from = 0, to = 1,length.out = 100), type = 'scatter', mode = 'lines+markers', line = list(color = "lightgrey",width = 1), name = '', marker = list(opacity = 0)) %>%
+  #layout(legend = list(x = 0.7, y = 0.1)) %>%
+layout(font = t,
+       title = "Disease of Anatomical Entity",
+       xaxis = a,
+       yaxis = b)
+
+
+a <- list(title = 'False positive rate',tickfont = list(family = 'sans-serif'),gridwidth = 0,gridcolor = "white")
+b <- list(title= 'True positive rate',tickfont = list(family = 'sans-serif'),gridwidth = 0,gridcolor = "white")
+plot_ly(x = unlist(cellproFPRRFDim[[7]]), y = unlist(cellproTPRRFDim[[7]]), type = 'scatter', mode = 'lines', line = list(color = "rgb(31, 119, 180)",width = 3),name = "All five spaces",showlegend = F) %>%
+  add_trace(x = unlist(cellproFPRRFDim[[2]]), y = unlist(cellproTPRRFDim[[2]]), type = 'scatter', mode = 'lines+markers', line = list(color = "orange",dash = 'dot',width = 2), name = 'Phenotype', marker = list(opacity = 0)) %>%
+  add_trace(x = unlist(cellproFPRRFDim[[3]]), y = unlist(cellproTPRRFDim[[3]]), type = 'scatter', mode = 'lines+markers', line = list(color = "lightgreen",dash = 'dot',width = 2), name = 'Co-occurrence', marker = list(opacity = 0)) %>%
+  add_trace(x = unlist(cellproFPRRFDim[[4]]), y = unlist(cellproTPRRFDim[[4]]), type = 'scatter', mode = 'lines+markers', line = list(color = "lightpink",dash = 'dot',width = 2), name = 'Genetic', marker = list(opacity = 0)) %>%
+  add_trace(x = unlist(cellproFPRRFDim[[5]]), y = unlist(cellproTPRRFDim[[5]]), type = 'scatter', mode = 'lines+markers', line = list(color = "lightblue",dash = 'dot',width = 2), name = 'Expression', marker = list(opacity = 0)) %>%
+  add_trace(x = unlist(cellproFPRRFDim[[6]]), y = unlist(cellproTPRRFDim[[6]]), type = 'scatter', mode = 'lines+markers', line = list(color = "purple",dash = 'dot',width = 2), name = 'Drug', marker = list(opacity = 0)) %>%
+  add_trace(x = seq(from = 0, to = 1,length.out = 100), y = seq(from = 0, to = 1,length.out = 100), type = 'scatter', mode = 'lines+markers', line = list(color = "lightgrey",width = 1), name = '', marker = list(opacity = 0)) %>%
+  #layout(legend = list(x = 0.7, y = 0.1)) %>%
+layout(font = t,
+       title = "Disease of Cellular Proliferation",
+       xaxis = a,
+       yaxis = b)
+```
+
+Note that the ROC plots might look a little different from the calculated AUC value, as they are based on a subset of the 1000 runs (because they aren't all evaluated at the same number of cut-offs).
+
+
+#### Plot per space:
+```{r, echo=FALSE}
+
+x <- c("Disease of anatomical entity","Disease of cellular proliferation")
+yDO <- c(mean(anatomicalAUCRFDim[[1]]),mean(cellproAUCRFDim[[1]]))
+yPhen <- c(mean(anatomicalAUCRFDim[[2]]),mean(cellproAUCRFDim[[2]]))
+yPhensd <- c(sd(anatomicalAUCRFDim[[2]]),sd(cellproAUCRFDim[[2]]))
+yCo <- c(mean(anatomicalAUCRFDim[[3]]),mean(cellproAUCRFDim[[3]]))
+yCosd <- c(sd(anatomicalAUCRFDim[[3]]),sd(cellproAUCRFDim[[3]]))
+yGen <- c(mean(anatomicalAUCRFDim[[4]]),mean(cellproAUCRFDim[[4]]))
+yGensd <- c(sd(anatomicalAUCRFDim[[4]]),sd(cellproAUCRFDim[[4]]))
+yExp <- c(mean(anatomicalAUCRFDim[[5]]),mean(cellproAUCRFDim[[5]]))
+yExpsd <- c(sd(anatomicalAUCRFDim[[5]]),sd(cellproAUCRFDim[[5]]))
+yDrug <- c(mean(anatomicalAUCRFDim[[6]]),mean(cellproAUCRFDim[[6]]))
+yDrugsd <- c(sd(anatomicalAUCRFDim[[6]]),sd(cellproAUCRFDim[[6]]))
+yFused <- c(mean(anatomicalAUCRFDim[[7]]),mean(cellproAUCRFDim[[7]]))
+yFusedsd <- c(sd(anatomicalAUCRFDim[[7]]),sd(cellproAUCRFDim[[7]]))
+data <- data.frame(x,yPhen,yPhensd,yCo,yCosd,yGen,yGensd,yExp,yExpsd,yDrug,yDrugsd,yFused,yFusedsd)
+data = data.frame(data)
+
+
+#The default order will be alphabetized unless specified as below:
+data$x <- factor(data$x, levels = data[["x"]])
+
+plot_ly(data, x = ~x, y = ~yPhen, type = 'bar', name = 'Phenotype', marker = list(color = 'rgb(0,191,255)'),error_y = list(array = ~yPhensd,color = 'lightgrey')) %>%
+   add_trace(y = ~yCo, type = 'bar', name = 'Co-occurrence', marker = list(color = 'orange'),error_y = list(array = ~yCosd,color = 'lightgrey')) %>%
+   add_trace(y = ~yGen, type = 'bar', name = 'Genetic', marker = list(color = 'lightpink'),error_y = list(array = ~yGensd,color = 'lightgrey')) %>%
+   add_trace(y = ~yExp, type = 'bar', name = 'Expression', marker = list(color = 'turquoise'),error_y = list(array = ~yExpsd,color = 'lightgrey')) %>%
+   add_trace(y = ~yDrug, type = 'bar', name = 'Drug', marker = list(color = 'rgb(147,112,219)'),error_y = list(array = ~yDrugsd,color = 'lightgrey')) %>%
+   add_trace(y = ~yFused, type = 'bar', name = 'Fused (minus ontological space)', marker = list(color = 'yellow'),error_y = list(array = ~yFusedsd,color = 'lightgrey')) %>%
+   #add_trace(y = ~yFive, type = 'bar', name = 'All', marker = list(color = 'lightgreen'),error_y = list(array = ~yFivesd,color = 'lightgrey')) %>%
+  layout(font = t,
+         xaxis = list(title = "", tickangle = 0),
+         yaxis = list(title = "AUROC"),
+         barmode = 'group')
+```
