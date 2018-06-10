@@ -47,13 +47,15 @@ createDiseaseOntologySimilarityMatrix = function(permuted = FALSE){
     
   }
   rm(i)
+  # Replace NA values for the two diseases which don't have any ontological partners with 0s
+  ontologicalSimilarity[is.na(ontologicalSimilarity)]<-0
+  
   diag(ontologicalSimilarity) <- NA 
   
   rownames(ontologicalSimilarity) = diseaseDatasetInfo$condition
   colnames(ontologicalSimilarity) = diseaseDatasetInfo$condition
   
-  # Replace NA values for the two diseases which don't have any ontological partners with 0s
-  ontologicalSimilarity[is.na(ontologicalSimilarity)]<-0
+
   
   return(ontologicalSimilarity)
 }

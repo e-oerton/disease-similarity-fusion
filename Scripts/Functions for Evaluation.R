@@ -60,7 +60,7 @@ getLinksThatAreNovelAndOrShareDrugs = function(proportionCutOff = 1-proportionOf
   
   meanJaccardScores = sapply(allMatricesCutOff,function(x) mean(drugSimilarityValues[which(x!=0)]))
   proportionThatAreNovel = sapply(allMatricesCutOff,function(x) length(which(sameDOClassValues[which(x!=0)]==0))/length(which(x!=0)))
-  meanJaccardScoresNovel = sapply(novelMatricesCutOff,function(x) mean(drugSimilarityValues[which(x!=0)]))
+  meanJaccardScoresNovel = sapply(novelMatricesCutOff,function(x) if(length(x[which(x!=0)])==0) NA else mean(drugSimilarityValues[which(x!=0)]))
   
   # This version in the manuscript was evaluated on the full 1000 random matrices, but has been changed to 100 for speed
   meanJaccardScoresRandom = vector("numeric",length(fusedRandomMatrices[1:100]))
