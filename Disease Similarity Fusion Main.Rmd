@@ -13,8 +13,6 @@ library(plotly) #for graph output
 library(rmarkdown) #for html output
 library(gplots) #for heatmap
 library(RColorBrewer) #for heatmap
-library(igraph) #for generating cytoscape graph
-library(ROCR) #for auc
 ```
 ## 1. Set up the environment 
 ### Set file path:
@@ -63,6 +61,7 @@ for(file in allFiles){
 
 # Code chunk not run
 
+# Requires installation of DOSE package (biocLite("DOSE"))
 source("Creating the Similarity Matrices/Scripts/createDiseaseOntologySimilarityMatrix.R")
 ontologicalSimilarity = createDiseaseOntologySimilarityMatrix()
 
@@ -93,7 +92,6 @@ fusedMatrix = createFusedMatrix(filePathToSimilarityMatrices,inputMatrices = c("
 
 ### Load pre-computed random matrices (for significance testing)
 ```{r}
-
 load(paste(filePathToData,"fusedRandomMatricesDistWeighted.Rda",sep = "/"))
 load(paste(filePathToData,"fusedRandomMatricesWeightedDistWeighted.Rda",sep = "/"))
 ```
@@ -141,6 +139,8 @@ plot(hclust(as.dist(1-fusedMatrixSig)))
 
 ### Write the disease map to a graph representation which can be imported to Cytoscape or other graph analysis software
 ```{r,eval=FALSE}
+library(igraph) #for generating cytoscape graph
+
 # Create graph representation from significant similarity matrix using igraph function
 binarygraph  = graph_from_adjacency_matrix(fusedMatrixSig,mode = "undirected",weighted = TRUE,diag = FALSE)
 
@@ -548,6 +548,9 @@ plot_ly(data,x = ~x, y = ~y1NonDrug, type = 'scatter', mode = 'lines+markers', n
 #### Build a random forest classifier on the full similarity values to predict top-level DO classes
 
 ```{r, echo = FALSE, eval=FALSE}
+library(randomForest) # To build random forest classifier
+library(ROCR) # To calculate AUC
+
 # This takes ~30 min to run, so recommended just to load the pre-computed results below
 combinations = list(ontologicalSimilarity,phenotypicSimilarity,litCoOccurrenceSimilarity,geneticSimilarity,transcriptomicSimilarity,drugSimilarity,fusedMatrixMinusDO)
 anatomicalAUCRFDim = vector("list",length(combinations))
