@@ -2,13 +2,13 @@
 
 This repository contains all data and code necessary to faithfully recreate the analysis presented in 'Understanding and predicting disease relationships through similarity fusion' (Oerton et al., 2018).
  
-A worked example is given [here](https://github.com/e-oerton/disease-similarity-fusion/blob/master/Disease_Similarity_Fusion_Main.html).
+A worked example is given [here](https://rawgit.com/e-oerton/disease-similarity-fusion/master/Disease_Similarity_Fusion_Main.html).
 
 ## Instructions
 
 All code and evaluation functions are supplied in markdown format ([Disease Similarity Fusion Main.Rmd](https://github.com/e-oerton/disease-similarity-fusion/blob/master/Disease%20Similarity%20Fusion%20Main.Rmd)).
 
-The output of this file is also supplied as a [premade .html file](https://github.com/e-oerton/disease-similarity-fusion/blob/master/Disease_Similarity_Fusion_Main.html), so code and results can be viewed without downloading and running the code locally.  
+The output of this file is also supplied as a [premade .html file](https://rawgit.com/e-oerton/disease-similarity-fusion/master/Disease_Similarity_Fusion_Main.html), so code and results can be viewed without downloading and running the code locally.  
 
 To download and run the full code, navigate to the directory you wish to install disease-similarity-fusion in and in Mac/Linux terminal run ```git clone https://github.com/e-oerton/disease-similarity-fusion/``` (recommended) or download/extract the zip from GitHub webpage.  Note the repository data files are large (488 Mb).
 
