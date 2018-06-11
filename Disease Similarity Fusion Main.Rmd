@@ -139,6 +139,9 @@ plot(hclust(as.dist(1-fusedMatrixSig)))
 
 ### Write the disease map to a graph representation which can be imported to Cytoscape or other graph analysis software
 ```{r,eval=FALSE}
+
+# Code chunk not run
+
 library(igraph) #for generating cytoscape graph
 
 # Create graph representation from significant similarity matrix using igraph function
