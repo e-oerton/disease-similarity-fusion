@@ -21,10 +21,10 @@ The following R packages are required to run 'Disease Similarity Fusion Main.rmd
 5. *RColorBrewer* to display the similarity heatmap 
 
 The following packages are optional (the .Rmd file can be run without installing these packages):
-6. *igraph* to easily output the graph to e.g. Cytoscape
-7. *DOSE* (Bioconductor package) to create the ontological similarity matrix
-8. *randomForest* to evaluate classification performance of disease similarities
-9. *ROCR* to evaluate classification performance of disease similarities
+1. *igraph* to easily output the graph to e.g. Cytoscape
+2. *DOSE* (Bioconductor package) to create the ontological similarity matrix
+3. *randomForest* to evaluate classification performance of disease similarities
+4. *ROCR* to evaluate classification performance of disease similarities
 
 To install all packages, run [this script](https://github.com/e-oerton/disease-similarity-fusion/blob/master/Scripts/Package%20Installation%20Commands.R).
 
