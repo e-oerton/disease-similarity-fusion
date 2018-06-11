@@ -24,6 +24,8 @@ The following R packages are required to run 'Disease Similarity Fusion Main.rmd
 8. *ROCR*
 9. *DOSE* (Bioconductor package)
 
-To run the full code, simply knit the R Markdown file (e.g. use the 'Knit' button in RStudio), which will illustrate the steps necessary to create the disease map, and display the output (initially as a hierarchical cluster plot; instructions to output the map in a form that can be used with graph analysis software such as Cytoscape are also given) and evaluation functions which generate the figures used in the manuscript.  
+To install all packages, run [this script](https://github.com/e-oerton/disease-similarity-fusion/blob/master/Scripts/Package%20Installation%20Commands.R)
+
+To run the full code, open the R Markdown file and then knit the file (e.g. use the 'Knit' button in RStudio), which will illustrate the steps necessary to create the disease map, and display the output (initially as a hierarchical cluster plot; instructions to output the map in a form that can be used with graph analysis software such as Cytoscape are also given) and evaluation functions which generate the figures used in the manuscript.  
 
 Alternatively, the R script ['Perform Similarity Fusion'](https://github.com/e-oerton/disease-similarity-fusion/blob/master/Scripts/Perform%20Similarity%20Fusion.R) is the key function that performs the actual similarity fusion on input similarity matrices (example matrices are given in the ['Similarity Matrices' folder](https://github.com/e-oerton/disease-similarity-fusion/blob/master/Data/Similarity%20Matrices)).  To simply run 'Perform Similarity Fusion' based on the instructions given in 'Disease Similarity Fusion Main', *limma* is the only package that is required.  
