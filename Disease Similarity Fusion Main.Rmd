@@ -110,11 +110,11 @@ for(i in 1:length(fusedRandomMatrices)){
   fusedRandomMatrices[[i]] = createFusedMatrix(inputMatrices = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity"), randomFeatureVectors = TRUE)
 }
 
-# fusedRandomMatricesWeighted = vector("list",1000)
-# for(i in 1:length(fusedRandomMatricesWeighted)){
-#   if(i%%10==0) print(i)
-#   fusedRandomMatricesWeighted[[i]] = createFusedMatrix(inputMatrices = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity"), randomFeatureVectors = TRUE, weights = c(1,1,1,2,2,2))
-# }
+fusedRandomMatricesWeighted = vector("list",1000)
+for(i in 1:length(fusedRandomMatricesWeighted)){
+  if(i%%10==0) print(i)
+  fusedRandomMatricesWeighted[[i]] = createFusedMatrix(inputMatrices = c("ontologicalSimilarity","phenotypicSimilarity","litCoOccurrenceSimilarity","geneticSimilarity","transcriptomicSimilarity","drugSimilarity"), randomFeatureVectors = TRUE, weights = c(1,1,1,2,2,2))
+}
 ```
 
 
@@ -123,6 +123,7 @@ for(i in 1:length(fusedRandomMatrices)){
 ### Define significance threshold
 ```{r,fig.width=16,fig.height=12}
 
+# Function to find the significance threshold of similarity, given a set of random matrices
 getProportionCutOffs = function(similarityMatrix,randomMatrices,verbose = FALSE){
   # The significance threshold is defined as the 99.99% highest random similarity value
   thresh = sort(sapply(randomMatrices,function(x) x[lower.tri(x)]))[1000*0.9999*length(similarityMatrix[lower.tri(similarityMatrix)])]
@@ -153,6 +154,8 @@ write.csv(cbind(get.edgelist(binarygraph),E(binarygraph)$weight,apply(get.edgeli
 
 
 ## 4. Further evaluation
+
+Code chunks below this point generate the plots used in 'Understanding and predicting disease relationships through similarity fusion'; they are not required to create the disease map.
 
 ### Examine data sparsity:
 ```{r,echo = FALSE}
