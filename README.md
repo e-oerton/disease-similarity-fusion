@@ -14,15 +14,17 @@ To download and run the full code, navigate to the directory you wish to install
 
 The disease similarity fusion code is written in R (https://www.r-project.org/) and tested using RStudio. 
 The following R packages are required to run 'Disease Similarity Fusion Main.rmd':
-1. *limma* (Bioconductor package)
-2. *plotly*
-3. *rmarkdown*
-4. *gplots*
-5. *RColorBrewer*
-6. *igraph*
-7. *randomForest*
-8. *ROCR*
-9. *DOSE* (Bioconductor package)
+1. *limma* (Bioconductor package) for quantile normalization
+2. *plotly* for displaying interactive graphs
+3. *rmarkdown* to run the .Rmd file
+4. *gplots* to display the similarity heatmap
+5. *RColorBrewer* to display the similarity heatmap 
+
+The following packages are optional (the .Rmd file can be run without installing these packages):
+6. *igraph* to easily output the graph to e.g. Cytoscape
+7. *DOSE* (Bioconductor package) to create the ontological similarity matrix
+8. *randomForest* to evaluate classification performance of disease similarities
+9. *ROCR* to evaluate classification performance of disease similarities
 
 To install all packages, run [this script](https://github.com/e-oerton/disease-similarity-fusion/blob/master/Scripts/Package%20Installation%20Commands.R).
 
