@@ -2,7 +2,7 @@
 
 This repository contains all data and code necessary to faithfully recreate the analysis presented in 'Understanding and predicting disease relationships through similarity fusion' (Oerton et al., 2018).
  
-A worked example is given [here](http://htmlpreview.github.io/?https://github.com/e-oerton/disease-similarity-fusion/blob/master/Disease_Similarity_Fusion_Main.html).
+A worked example is given [here](https://github.com/e-oerton/disease-similarity-fusion/blob/master/Disease_Similarity_Fusion_Main.html).
 
 ## Instructions
 
