@@ -1,0 +1,85 @@
+Transcriptomic space,Ontological and phenotypic spaces,Literature co-occurrence space,Genetic space,Drug space,ICD9,ICD9 Name
+acne,acne,acne vulgaris,acne,acne,706,Diseases of sebaceous glands
+actinic keratosis,actinic keratosis,actinic keratosis,"keratosis, actinic",actinic keratosis,702,other dermatoses
+acute myeloid leukemia,acute myeloid leukemia,acute myeloid leukemia,"leukemia, myeloid, acute",acute myeloid leukemia,205,myeloid leukemia
+adrenal adenoma,adrenal adenoma,adrenocortical adenoma,adrenocortical adenoma,adrenocortical carcinoma,227,Benign neoplasm of other endocrine glands and related structures
+alcoholism,alcohol dependence,alcohol dependence,alcohol abuse or dependence,alcohol dependence,303,Alcohol dependence syndrome
+allergic asthma,allergic asthma,"asthma, aspirin-induced",allergic asthma,asthma,493,asthma
+allergic contact dermatitis,allergic contact dermatitis,allergic contact dermatitis,"dermatitis, allergic contact",contact dermatitis,692,Contact dermatitis and other eczema
+alopecia areata,alopecia areata,alopecia areata,alopecia areata,alopecia areata,704,diseases of hair and hair follicles
+alzheimer's disease,alzheimer's disease,alzheimer's disease,alzheimer disease,alzheimers disease,331,other cerebral degenerations
+aortic aneurysm,aortic aneurysm,aortic aneurysm,aortic aneurysm,aortic aneurysm,441,aortic aneurysm and dissection
+asthma,asthma,asthma,asthma,asthma,493,asthma
+astrocytoma,astrocytoma,astrocytoma,astrocytoma,astrocytoma,191,malignant neoplasm of brain
+atopic dermatitis,atopic dermatitis,atopic dermatitis,adult atopic dermatitis,atopic eczema,691,atopic dermatitis and related conditions
+autism,autistic disorder,autistic disorder,autistic disorder,autism,299,pervasive developmental disorders
+bacterial meningitis,bacterial meningitis,bacterial meningitis,"meningitis, bacterial",bacterial meningitis,320,bacterial meningitis
+bipolar disorder,bipolar disorder,bipolar disorder,bipolar disorder,bipolar disorder,296,episodic mood disorders
+bladder cancer,urinary bladder cancer,urinary bladder cancer,carcinoma of bladder,bladder carcinoma,188,Malignant neoplasm of bladder
+breast lobular carcinoma,invasive lobular carcinoma,breast cancer,"breast cancer, lobular",breast carcinoma,174,Malignant neoplasm of female breast
+cerebral palsy,cerebral palsy,spastic diplegia,cerebral palsy,cerebral palsy,343,infantile cerebral palsy
+cervical squamous cell carcinoma,cervical squamous cell carcinoma,cervical cancer,cervix carcinoma,cervical carcinoma,180,Malignant neoplasm of cervix uteri
+cervical intraepithelial neoplasia,cervix uteri carcinoma in situ,cervix uteri carcinoma in situ,high grade cervical intraepithelial neoplasia,cervical carcinoma,233,Carcinoma in situ of breast and genitourinary system
+chronic lymphocytic leukemia,chronic lymphocytic leukemia,chronic lymphocytic leukemia,"leukemia, lymphocytic, chronic, b-cell",chronic lymphocytic leukemia,204,lymphoid leukemia
+chronic obstructive pulmonary disease,chronic obstructive pulmonary disease,chronic obstructive pulmonary disease,severe chronic obstructive pulmonary disease,chronic obstructive pulmonary disease,496,"Chronic airway obstruction, not elsewhere classified"
+colorectal adenocarcinoma,colorectal cancer,colon cancer,colorectal cancer,colorectal adenocarcinoma,153,Malignant neoplasm of colon
+crohn's disease,crohn's disease,crohn's colitis,crohn disease,crohn's disease,555,Regional enteritis
+cystic fibrosis,cystic fibrosis,cystic fibrosis,cystic fibrosis,cystic fibrosis,277,Other and unspecified disorders of metabolism
+dengue fever,dengue disease,dengue disease,dengue,not found,61,Dengue
+dilated cardiomyopathy,dilated cardiomyopathy,dilated cardiomyopathy,"cardiomyopathy, dilated",dilated cardiomyopathy,425,cardiomyopathy
+discoid lupus erythematosus,discoid lupus erythematosus of eyelid,"lupus erythematosus, discoid","lupus erythematosus, discoid",cutaneous lupus erythematosus,373,inflammation of eyelids
+down syndrome,down syndrome,down syndrome,down syndrome,down syndrome,758,chromosomal anomalies
+duchenne muscular dystrophy,duchenne muscular dystrophy,duchenne muscular dystrophy,"muscular dystrophy, duchenne",duchenne muscular dystrophy,359,Muscular dystrophies and other myopathies
+emphysema,pulmonary emphysema,emphysema,pulmonary emphysema,emphysema,492,Emphysema
+endometrial carcinoma,endometrial carcinoma,endometrial carcinoma,endometrial carcinoma,endometrial neoplasm,182,Malignant neoplasm of body of uterus
+endometriosis,endometriosis,endometriosis of uterus,endometriosis,endometriosis,617,Endometriosis
+gastric adenocarcinoma,gastric adenocarcinoma,stomach cancer,stomach carcinoma,gastric adenocarcinoma,151,Malignant neoplasm of stomach
+head and neck squamous cell carcinoma,head and neck squamous cell carcinoma,"carcinoma, squamous cell of head and neck","carcinoma, squamous cell of head and neck",head and neck squamous cell carcinoma,195,Malignant neoplasm of other and ill-defined sites
+chronic hepatitis b (carrier),hepatitis b,hepatitis b,"hepatitis b, chronic",chronic hepatitis b infection,70,Viral hepatitis
+chronic hepatitis c,hepatitis c,hepatitis c,"hepatitis c, chronic",chronic hepatitis c infection,70,Viral hepatitis
+hepatocellular carcinoma,hepatocellular carcinoma,"carcinoma, hepatocellular",adult primary hepatocellular carcinoma,hepatocellular carcinoma,155,Malignant neoplasm of liver and intrahepatic bile ducts
+hiv,human immunodeficiency virus infectious disease,human immunodeficiency virus infectious disease,hiv infections,hiv infection,42,Human immunodeficiency virus [HIV] disease
+hodgkin's lymphoma,hodgkin's lymphoma,"hodgkin's lymphoma, lymphocytic-histiocytic predominance",classical hodgkin lymphoma,hodgkins lymphoma,201,Hodgkin's disease
+huntington's disease,huntington's disease,huntington's disease,huntington disease,huntington disease,333,Other extrapyramidal disease and abnormal movement disorders
+idiopathic pulmonary fibrosis,idiopathic pulmonary fibrosis,idiopathic pulmonary fibrosis,idiopathic pulmonary fibrosis,idiopathic pulmonary fibrosis,516,Other alveolar and parietoalveolar pneumonopathy
+influenza,influenza,influenza,"influenza, human",influenza infection,487,Influenza
+irritable bowel syndrome,irritable bowel syndrome,irritable bowel syndrome,irritable bowel syndrome,irritable bowel syndrome,564,"Functional digestive disorders, not elsewhere classified"
+ischemic cardiomyopathy,cardiomyopathy,cardiomyopathy,ischemic cardiomyopathy,cardiomyopathy,414,Other forms of chronic ischemic heart disease
+ischemic stroke,cerebrovascular disease,cerebrovascular disease,ischemic stroke,stroke,434,Occlusion of cerebral arteries
+juvenile idiopathic arthritis,juvenile rheumatoid arthritis,"rheumatoid arthritis, systemic juvenile",juvenile rheumatoid arthritis,chronic childhood arthritis,714,Rheumatoid arthritis and other inflammatory polyarthropathies
+leukopenia,leukopenia,leukopenia,leukopenia,not found,288,Diseases of white blood cells
+limb-girdle muscular dystrophy,limb-girdle muscular dystrophy,limb-girdle muscular dystrophy,"muscular dystrophies, limb-girdle",not found,359,Muscular dystrophies and other myopathies
+non-small cell lung carcinoma,non-small cell lung carcinoma,non-small cell lung carcinoma,"carcinoma, non-small-cell lung",non-small cell lung carcinoma,162,"Malignant neoplasm of trachea, bronchus, and lung"
+major depressive disorder,major depressive disorder,"depressive disorder, major","depressive disorder, major",unipolar depression,296,Episodic mood disorders
+teratozoospermia,azoospermia,male infertility,teratospermia,azoospermia,792,Nonspecific abnormal findings in other body substances
+malignant pleural mesothelioma,malignant pleural mesothelioma,"mesothelioma, malignant",pleural malignant mesothelioma,mesothelioma,163,Malignant neoplasm of pleura
+measles,measles,measles,measles,not found,55,Measles
+multiple sclerosis,multiple sclerosis,multiple sclerosis,multiple sclerosis,multiple sclerosis,340,Multiple sclerosis
+myocardial infarction,myocardial infarction,myocardial infarction,myocardial infarction,myocardial infarction,410,Acute myocardial infarcation
+nasopharyngeal carcinoma,nasopharynx carcinoma,nasopharyngeal carcinoma,nasopharyngeal carcinoma,nasopharyngeal neoplasm,147,Malignant neoplasm of nasopharynx
+obesity,obesity,obesity,obesity,obesity,278,"Overweight, obesity and other hyperalimentation"
+esophageal squamous cell carcinoma,esophagus squamous cell carcinoma,esophageal squamous cell carcinoma,esophageal squamous cell carcinoma,esophageal carcinoma,150,Malignant neoplasm of esophagus
+osteoarthritis,osteoarthritis,osteoarthritis,osteoarthritis,osteoarthritis,715,Osteoarthrosis and allied disorders
+osteoporosis,osteoporosis,osteoporosis,osteoporosis,osteoporosis,733,Other disorders of bone and cartilage
+pancreatic cancer,pancreatic cancer,pancreatic cancer,pancreatic carcinoma,pancreatic carcinoma,157,Malignant neoplasm of pancreas
+parkinson's disease,parkinson's disease,parkinson's disease,parkinson disease,parkinson's disease,332,Parkinson's disease
+placental malaria,malaria,malaria,malaria,malaria,84,Malaria
+polycystic ovary syndrome,polycystic ovary syndrome,polycystic ovary syndrome,polycystic ovary syndrome,polycystic ovary syndrome,256,Ovarian dysfunction
+preeclampsia,pre-eclampsia,pre-eclampsia,pre-eclampsia,preeclampsia,642,"Hypertension complicating pregnancy, childbirth, and the puerperium"
+prolactinoma,prolactinoma,prolactinoma,prolactinoma,hyperprolactinemia,253,Disorders of the pituitary gland and its hypothalamic control
+prostate cancer,prostate cancer,prostate cancer,prostate carcinoma,prostate carcinoma,185,Malignant neoplasm of prostate
+psoriasis,psoriasis,parapsoriasis,psoriasis,psoriasis,696,Psoriasis and similar disorders
+pulmonary arterial hypertension,pulmonary hypertension,pulmonary hypertension,pulmonary arterial hypertension,pulmonary hypertension,416,Chronic pulmonary heart disease
+clear-cell renal cell carcinoma,renal clear cell carcinoma,clear-cell metastatic renal cell carcinoma,non-hereditary clear cell renal cell carcinoma,clear cell renal carcinoma,189,Malignant neoplasm of kidney and other and unspecified urinary organs
+rheumatoid arthritis,rheumatoid arthritis,rheumatoid arthritis,"arthritis, rheumatoid",rheumatoid arthritis,714,Rheumatoid arthritis and other inflammatory polyarthropathies
+rosacea,rosacea,rosacea,rosacea,rosacea,695,Erythematous conditions
+sarcoidosis,sarcoidosis,sarcoidosis,sarcoidosis,sarcoidosis,135,Sarcoidosis
+sepsis,disease by infectious agent,sepsis,sepsis,sepsis,995,Certain adverse effects not elsewhere classified
+sickle cell disease,sickle cell anemia,sickle cell anemia,"anemia, sickle cell",sickle cell anemia,282,Hereditary hemolytic anemias
+systemic lupus erythematosus,systemic lupus erythematosus,systemic lupus erythematosus,"lupus erythematosus, systemic",systemic lupus erythematosus,710,Diffuse diseases of connective tissue
+essential thrombocythemia,essential thrombocythemia,essential thrombocythemia,"thrombocythemia, essential",essential thrombocythemia,238,Neoplasm of uncertain behavior of other and unspecified sites and tissues
+thyroid carcinoma,thyroid carcinoma,thyroid cancer,thyroid carcinoma,thyroid carcinoma,193,Malignant neoplasm of thyroid gland
+type 1 diabetes mellitus,type 1 diabetes mellitus,type 1 diabetes mellitus,"diabetes mellitus, type 1",type i diabetes mellitus,250,Diabetes mellitus
+type 2 diabetes mellitus,type 2 diabetes mellitus,type 2 diabetes mellitus,"diabetes mellitus, type 2",type ii diabetes mellitus,250,Diabetes mellitus
+ulcerative colitis,ulcerative colitis,ulcerative colitis,"colitis, ulcerative",ulcerative colitis,556,Ulcerative colitis
+vulvar intraepithelial neoplasia,vulva cancer,vulva cancer,"vulvar intraepithelial neoplasia, usual type",vulvar intraepithelial neoplasia,233,Carcinoma in situ of breast and genitourinary system

@@ -692,3 +692,74 @@ plot_ly(data, x = ~x, y = ~yPhen, type = 'bar', name = 'Phenotype', marker = lis
          yaxis = list(title = "AUROC"),
          barmode = 'group')
 ```
+
+### How many of the links in the disease map are also found in comorbidity data?
+
+```{r, echo=FALSE}
+# Read in mapping of disease names to ICD codes
+diseaseNameMappingToICD = read.csv(paste0(filePathToData,"/diseaseNameMappingToICD.csv"),stringsAsFactors = FALSE)
+
+# Read in allNet3 comorbidity data (from sbi.imim.es/data/hudine)
+allNet3 = read.csv(paste0(filePathToData,"/AllNet3.net"),sep = "\t",stringsAsFactors = FALSE) #291172 obs
+allNet3$pairs = apply(allNet3,1,function(x) paste(x[1],x[2])) # Write pairs in comorbidity dataset as a string
+
+# Filter the disease pairs with less than 100 co-occurrences, according to Rubio-Perez (2017) Genetic and functional characterization of disease associations explains comorbidity
+allNet3 = allNet3[which(allNet3$n>=100),] #88347 obs
+
+# Translate disease names to ICD codes
+allDiseasesICD = sapply(diseaseDatasetInfo$condition,function(x) trimws(diseaseNameMappingToICD[which(diseaseNameMappingToICD$Transcriptomic.space==x),"ICD9"]))
+allDiseasePairs = apply(combn(allDiseasesICD,2),2,function(x) paste(x[1],x[2])) # Write all pairs in our dataset as a string
+#length(which(allDiseasePairs%in%allNet3$pairs))/length(allDiseasePairs) #There is disease comorbidity data for 26.9% of all pairs
+allDiseasePairsWithComorbidityObs = allDiseasePairs[which(allDiseasePairs%in%allNet3$pairs)]
+#length(allDiseasePairsWithComorbidityObs) #which is 938 of 3486 pairs
+
+# Translate pairs in the disease map to ICD codes
+binarygraph  = graph_from_adjacency_matrix(fusedMatrixSig,mode = "undirected",weighted = TRUE,diag = FALSE) # Get list of pairs
+diseaseMapPairsICD = as.data.frame(cbind(get.edgelist(binarygraph)),stringsAsFactors = FALSE)
+diseaseMapPairsICD$V1 = sapply(diseaseMapPairsICD$V1,function(x) trimws(diseaseNameMappingToICD[which(diseaseNameMappingToICD$Transcriptomic.space==x),"ICD9"])) 
+diseaseMapPairsICD$V2 = sapply(diseaseMapPairsICD$V2,function(x) trimws(diseaseNameMappingToICD[which(diseaseNameMappingToICD$Transcriptomic.space==x),"ICD9"]))
+diseaseMapPairsICD$X = apply(diseaseMapPairsICD,1,function(x) paste(x[1],x[2])) # Write all pairs in the disease map as a string
+
+# How many disease pairs are in the comorbidity data?
+diseaseMapPairsICDWithComorbidityObs = diseaseMapPairsICD[which(make.unique(diseaseMapPairsICD$X)%in%make.unique(allDiseasePairsWithComorbidityObs)),]
+#nrow(diseaseMapPairsICDWithComorbidityObs) # The 938 pairs with comorbidity data include 63 pairs connected in the disease map
+allNonConnectedDiseasePairsWithComorbidityObs = allDiseasePairsWithComorbidityObs[which(!(make.unique(allDiseasePairsWithComorbidityObs)%in%make.unique(diseaseMapPairsICDWithComorbidityObs$X)))]
+#length(allNonConnectedDiseasePairsWithComorbidityObs) # The 938 pairs with comorbidity data include 875 disease pairs which aren't connected in the disease map
+```
+
+#### What is the median comorbidity score (relative risk) for diseases connected in the diseases map vs unconnected diseases?
+```{r,echo=FALSE}
+cat(paste("Median RR for diseases connected in the map:",round(median(sapply(diseaseMapPairsICDWithComorbidityObs$X,function(x) allNet3[which(allNet3$pairs==x),"RR"])),3)))
+cat(paste("Median RR for diseases not connected in the map:",round(median(sapply(allNonConnectedDiseasePairsWithComorbidityObs,function(x) allNet3[which(allNet3$pairs==x),"RR"])),3)))
+```
+
+#### What percentage of diseases connected in the map are comorbid at a relative risk of 1.5?
+```{r,echo=FALSE}
+allNet3Comorbid = allNet3[which(allNet3$RR>1.5),] 
+comorbidDiseaseMapPairs = length(which(diseaseMapPairsICDWithComorbidityObs$X%in%allNet3Comorbid$pairs))/nrow(diseaseMapPairsICDWithComorbidityObs) 
+cat(paste0("What percentage of pairs in the disease map are comorbid?: ",round(comorbidDiseaseMapPairs,3)*100,"%"))
+comorbidNonDiseaseMapPairs = length(which(allNonConnectedDiseasePairsWithComorbidityObs%in%allNet3Comorbid$pairs))/length(allNonConnectedDiseasePairsWithComorbidityObs)
+cat(paste0("What percentage of pairs not connected in the disease map are comorbid?: ",round(comorbidNonDiseaseMapPairs,3)*100,"%"))
+cat(paste("How many times higher is the percentage of comorbid disease map pairs than in non-connected pairs?",round(comorbidDiseaseMapPairs/comorbidNonDiseaseMapPairs,3)))
+```
+
+#### What percentage of diseases connected in the map are comorbid at a relative risk of 2?
+```{r,echo=FALSE}
+allNet3Comorbid = allNet3[which(allNet3$RR>2),] 
+comorbidDiseaseMapPairs = length(which(diseaseMapPairsICDWithComorbidityObs$X%in%allNet3Comorbid$pairs))/nrow(diseaseMapPairsICDWithComorbidityObs) 
+cat(paste0("What percentage of pairs in the disease map are comorbid?: ",round(comorbidDiseaseMapPairs,3)*100,"%"))
+comorbidNonDiseaseMapPairs = length(which(allNonConnectedDiseasePairsWithComorbidityObs%in%allNet3Comorbid$pairs))/length(allNonConnectedDiseasePairsWithComorbidityObs)
+cat(paste0("What percentage of pairs not connected in the disease map are comorbid?: ",round(comorbidNonDiseaseMapPairs,3)*100,"%"))
+cat(paste("How many times higher is the percentage of comorbid disease map pairs than in non-connected pairs?",round(comorbidDiseaseMapPairs/comorbidNonDiseaseMapPairs,3)))
+```
+
+#### What percentage of diseases connected in the map are comorbid at a relative risk of 5?
+```{r,echo=FALSE}
+allNet3Comorbid = allNet3[which(allNet3$RR>5),] 
+comorbidDiseaseMapPairs = length(which(diseaseMapPairsICDWithComorbidityObs$X%in%allNet3Comorbid$pairs))/nrow(diseaseMapPairsICDWithComorbidityObs) 
+cat(paste0("What percentage of pairs in the disease map are comorbid?: ",round(comorbidDiseaseMapPairs,3)*100,"%"))
+comorbidNonDiseaseMapPairs = length(which(allNonConnectedDiseasePairsWithComorbidityObs%in%allNet3Comorbid$pairs))/length(allNonConnectedDiseasePairsWithComorbidityObs)
+cat(paste0("What percentage of pairs not connected in the disease map are comorbid?: ",round(comorbidNonDiseaseMapPairs,3)*100,"%"))
+cat(paste("How many times higher is the percentage of comorbid disease map pairs than in non-connected pairs?",round(comorbidDiseaseMapPairs/comorbidNonDiseaseMapPairs,3)))
+```
+
