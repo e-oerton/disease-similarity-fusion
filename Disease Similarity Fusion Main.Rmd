@@ -734,7 +734,7 @@ cat(paste("Median RR for diseases connected in the map:",round(median(sapply(dis
 cat(paste("Median RR for diseases not connected in the map:",round(median(sapply(allNonConnectedDiseasePairsWithComorbidityObs,function(x) allNet3[which(allNet3$pairs==x),"RR"])),3)))
 ```
 
-#### What percentage of diseases connected in the map are comorbid at a relative risk of 1.5?
+#### What percentage of diseases connected in the map are comorbid at a relative risk threshold above 1.5?
 ```{r,echo=FALSE}
 allNet3Comorbid = allNet3[which(allNet3$RR>1.5),] 
 comorbidDiseaseMapPairs = length(which(diseaseMapPairsICDWithComorbidityObs$X%in%allNet3Comorbid$pairs))/nrow(diseaseMapPairsICDWithComorbidityObs) 
@@ -744,7 +744,7 @@ cat(paste0("What percentage of pairs not connected in the disease map are comorb
 cat(paste("How many times higher is the percentage of comorbid disease map pairs than in non-connected pairs?",round(comorbidDiseaseMapPairs/comorbidNonDiseaseMapPairs,3)))
 ```
 
-#### What percentage of diseases connected in the map are comorbid at a relative risk of 2?
+#### What percentage of diseases connected in the map are comorbid at a relative risk threshold above 2?
 ```{r,echo=FALSE}
 allNet3Comorbid = allNet3[which(allNet3$RR>2),] 
 comorbidDiseaseMapPairs = length(which(diseaseMapPairsICDWithComorbidityObs$X%in%allNet3Comorbid$pairs))/nrow(diseaseMapPairsICDWithComorbidityObs) 
@@ -754,7 +754,7 @@ cat(paste0("What percentage of pairs not connected in the disease map are comorb
 cat(paste("How many times higher is the percentage of comorbid disease map pairs than in non-connected pairs?",round(comorbidDiseaseMapPairs/comorbidNonDiseaseMapPairs,3)))
 ```
 
-#### What percentage of diseases connected in the map are comorbid at a relative risk of 5?
+#### What percentage of diseases connected in the map are comorbid at a relative risk threshold above 5?
 ```{r,echo=FALSE}
 allNet3Comorbid = allNet3[which(allNet3$RR>5),] 
 comorbidDiseaseMapPairs = length(which(diseaseMapPairsICDWithComorbidityObs$X%in%allNet3Comorbid$pairs))/nrow(diseaseMapPairsICDWithComorbidityObs) 
