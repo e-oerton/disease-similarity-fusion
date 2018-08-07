@@ -13,6 +13,7 @@ library(plotly) #for graph output
 library(rmarkdown) #for html output
 library(gplots) #for heatmap
 library(RColorBrewer) #for heatmap
+library(igraph) #for disease map output
 ```
 ## 1. Set up the environment 
 ### Set file path:
